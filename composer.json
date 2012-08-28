@@ -1,0 +1,21 @@
+{
+	"name": "davewid/asylum",
+	"description": "A client/server to perpare data when developing REST APIs",
+	"keywords": ["REST","Secure","API"],
+	"homepage": "https://github.com/daveWid/asylum",
+	"type": "library",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "Dave Widmer",
+			"email": "dave@davewidmer.net",
+			"homepage": "http://www.davewidmer.net"
+		}
+	],
+	"require":{
+		"php": ">=5.3"
+	},
+	"autoload": {
+		"psr-0": { "Asylum": "lib/" }
+	}
+}
