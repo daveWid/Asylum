@@ -23,23 +23,16 @@ class ClientTest extends PHPUnit_Framework_TestCase
 
 	public function testPrepare()
 	{
-		$headers = $this->client->prepare('search', 'GET', $this->data)->get_headers();
+		$data = $this->client->prepare('search', 'GET', $this->data);
 
-		// Make sure the header have the required oauth_* headers
+		// Make sure the data now has the required oauth_* headers
 		$keys = array('oauth_consumer_key', 'oauth_signature_method','oauth_timestamp',
 			'oauth_nonce', 'oauth_version', 'oauth_signature');
 
 		foreach ($keys as $key)
 		{
-			$this->assertArrayHasKey($key, $headers);
+			$this->assertArrayHasKey($key, $data);
 		}
 	}
 
-	public function testAuthorizationHeader()
-	{
-		// This is hard to test, just make sure it isn't empty
-		$headers = $this->client->prepare('search', 'GET', $this->data)->get_headers();
-
-		$this->assertNotEmpty($this->client->get_authorization_header());
-	}
 }

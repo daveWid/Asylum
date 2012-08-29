@@ -23,10 +23,16 @@ class ServerTest extends PHPUnit_Framework_TestCase
 		$this->client = new \Asylum\Client("http://api.brewerydb.com/v2/", "publickey", "privatekey");
 
 		// These next 2 lines would really come from the server of course...
-		$this->data = array('type' => "beer",'q' => "Sam Adams");
-		$this->auth = $this->client->prepare("search", "GET", $this->data)->get_authorization_header();
+		$data = array('type' => "beer",'q' => "Sam Adams");
+		$this->data = $this->client->prepare("search", "GET", $data);
 
-		$this->server = new \Asylum\Server($this->data, $this->auth, 'privatekey');
+		/**
+		 * // This is how you would really do it
+		 * // (or hopefully your framework normalizes this data)
+		 * $this->data = $_GET | $_POST depending on the request method...
+		 */
+
+		$this->server = new \Asylum\Server($this->data, 'privatekey');
 	}
 
 	public function testHasRequiredKeys()
@@ -51,7 +57,7 @@ class ServerTest extends PHPUnit_Framework_TestCase
 	public function testExpired()
 	{
 		// Make the request only good for 1 second...
-		$server = new \Asylum\Server($this->data, $this->auth, 'privatekey', 1);
+		$server = new \Asylum\Server($this->data, 'privatekey', 1);
 		sleep(2);
 
 		$this->assertFalse($server->is_active());
@@ -79,7 +85,7 @@ class ServerTest extends PHPUnit_Framework_TestCase
 		// The data is tampered with
 		$data['q'] = "Bells";
 
-		$this->server = new \Asylum\Server($data, $this->auth, 'privatekey');
+		$this->server = new \Asylum\Server($data, 'privatekey');
 		$this->assertFalse($this->server->is_valid('http://api.brewerydb.com/v2/search', 'GET'));
 	}
 

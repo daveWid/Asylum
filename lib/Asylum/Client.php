@@ -26,16 +26,6 @@ class Client
 	private $private_key;
 
 	/**
-	 * @var array  The oauth headers
-	 */
-	private $headers;
-
-	/**
-	 * @var string  The authorization header string
-	 */
-	private $authorization;
-
-	/**
 	 * Constructor, with public and private keys.
 	 *
 	 * @param string $endpoint    The endpoint to send to
@@ -47,27 +37,6 @@ class Client
 		$this->endpoint = $endpoint;
 		$this->public_key = $public_key;
 		$this->private_key = $private_key;
-	}
-
-	/**
-	 * @return array
-	 */
-	public function get_headers()
-	{
-		return $this->headers;
-	}
-
-	/**
-	 * @return string  The authorization header to send with the request
-	 */
-	public function get_authorization_header()
-	{
-		$auth = array();
-		foreach ($this->headers as $key => $value) {
-			$auth[] = $key.'="'.$value.'"';
-		}
-
-		return "OAuth ".join(',', $auth);
 	}
 
 	/**
@@ -100,8 +69,7 @@ class Client
 			$this->private_key
 		);
 
-		$this->headers = $headers;
-		return $this;
+		return array_merge($data, $headers);
 	}
 
 }
