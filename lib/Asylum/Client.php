@@ -11,6 +11,11 @@ namespace Asylum;
 class Client
 {
 	/**
+	 * @var string  The endpoint url
+	 */
+	public $endpoint;
+
+	/**
 	 * @var string  The public API key
 	 */
 	public $public_key;
@@ -21,9 +26,14 @@ class Client
 	private $private_key;
 
 	/**
-	 * @var array  The array of data to send with the request
+	 * @var array  The oauth headers
 	 */
-	private $data;
+	private $headers;
+
+	/**
+	 * @var string  The authorization header string
+	 */
+	private $authorization;
 
 	/**
 	 * Constructor, with public and private keys.
@@ -32,12 +42,32 @@ class Client
 	 * @param string $public_key  The public key used for authentication
 	 * @param string $private_key The private key used for hashing
 	 */
-	public function __construct($public_key, $private_key)
+	public function __construct($endpoint, $public_key, $private_key)
 	{
+		$this->endpoint = $endpoint;
 		$this->public_key = $public_key;
 		$this->private_key = $private_key;
+	}
 
-		$this->data = array();
+	/**
+	 * @return array
+	 */
+	public function get_headers()
+	{
+		return $this->headers;
+	}
+
+	/**
+	 * @return string  The authorization header to send with the request
+	 */
+	public function get_authorization_header()
+	{
+		$auth = array();
+		foreach ($this->headers as $key => $value) {
+			$auth[] = $key.'="'.$value.'"';
+		}
+
+		return "OAuth ".join(',', $auth);
 	}
 
 	/**
@@ -46,18 +76,32 @@ class Client
 	 * @param  string $uri    The uri to hit
 	 * @param  string $method The HTTP method (verb)
 	 * @param  array  $data   The data to send
-	 * @return array          The prepared data
+	 * @return Asylum\Client  $this....
 	 */
 	public function prepare($uri, $method, array $data)
 	{
-		$data += array(
-			'key' => $this->public_key,
-			'timestamp' => time()
+		/**
+		 * Required oauth headers
+		 * @link   http://tools.ietf.org/html/rfc5849#section-3.1
+		 */
+		$headers = array(
+			'oauth_consumer_key' => $this->public_key,
+			'oauth_token' => '',
+			'oauth_signature_method' => "HMAC-SHA256",
+			'oauth_timestamp' => time(),
+			'oauth_nonce' => '',
+			'oauth_version' => '1.0'
 		);
 
-		$data['hash'] = Hash::generate($uri, $method, $data, $this->private_key);
+		$headers['oauth_signature'] = Hash::generate(
+			$this->endpoint.$uri,
+			$method,
+			$data + $headers,
+			$this->private_key
+		);
 
-		return $data;
+		$this->headers = $headers;
+		return $this;
 	}
 
 }

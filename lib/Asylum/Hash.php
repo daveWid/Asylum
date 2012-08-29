@@ -13,22 +13,30 @@ class Hash
 	/**
 	 * Genearates a secure hash of the data you plan to send to the REST call.
 	 *
+	 * @link   http://tools.ietf.org/html/rfc5849#section-3.4.1.1
+	 *
 	 * @param  string $uri          The uri you are sending the request to without the domain (i.e /beers/:id)
 	 * @param  string $method       The HTTP verb you are using (i.e GET)
 	 * @param  array  $data         The data to hash
 	 * @param  string $private_key  The private key
-	 * @return string               A SHA256 hash of your data
+	 * @return string               A hash of your data
 	 */
 	public static function generate($uri, $method, $data, $private_key)
 	{
-		$data['uri'] = $uri;
-		$data['method'] = $method;
-
-		// Sort the data by key
+		// Sort the data by byte-order
 		ksort($data);
 
-		$hash = hash_hmac('sha256', http_build_query($data), $private_key, true);
-		return base64_encode($hash);
+		// Building the string the OAuth way, see @link tag above for more
+		$authorization = array(
+			strtoupper($method),
+			urlencode($uri),
+			urlencode(http_build_query($data))
+		);
+
+		$method = strtolower(str_replace("HMAC-", "", $data['oauth_signature_method']));
+
+		$hash = hash_hmac($method, join('&', $authorization), $private_key, true);
+		return urlencode(base64_encode($hash));
 	}
 
 	/**
