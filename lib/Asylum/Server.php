@@ -29,14 +29,42 @@ class Server
 	 * Constructor with private key.
 	 *
 	 * @param array  $data         The request data
+	 * @param string $header       The authorization header
 	 * @param string $private_key  The private key
 	 * @param int    $active_for   The time in seconds that the request is active (in seconds)
 	 */
-	public function __construct(array $data, $private_key, $active_for = 600)
+	public function __construct(array $data, $header, $private_key, $active_for = 600)
 	{
-		$this->data = $data;
+		$this->data = $data + $this->process_authorization_header($header);
 		$this->private_key = $private_key;
 		$this->active_for = $active_for;
+	}
+
+	/**
+	 * Processes the authorization header from the server.
+	 *
+	 * @param  string $header The authorization header
+	 * @return array          The values as an array
+	 */
+	private function process_authorization_header($header)
+	{
+		// The first part of the string is OAuth
+		$header = substr($header, 6);
+		$split = explode(',', $header);
+
+		$headers = array();
+		foreach ($split as $row)
+		{
+			list($key, $value) = explode('=', $row);
+			$headers[$key] = substr($value, 1, -1); // need to take off the " at start and end
+		}
+
+		$header['oauth_timestamp'] = (int) $header['oauth_timestamp'];
+
+		// If there is a realm header we can ditch it
+		unset($headers['realm']);
+
+		return $headers;
 	}
 
 	/**
@@ -68,7 +96,7 @@ class Server
 	 */
 	public function is_active()
 	{
-		return (time() + $this->active_for) > $this->data['timestamp'];
+		return time() <= ($this->data['oauth_timestamp'] + $this->active_for);
 	}
 
 	/**
@@ -82,8 +110,8 @@ class Server
 	{
 		$data = $this->data;
 
-		$hash = $data['hash'];
-		unset($data['hash']);
+		$hash = $data['oauth_signature'];
+		unset($data['oauth_signature']);
 
 		$checksum = Hash::generate($uri, $method, $data, $this->private_key);
 		return Hash::is_match($hash, $checksum);

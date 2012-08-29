@@ -12,22 +12,30 @@ class ServerTest extends PHPUnit_Framework_TestCase
 	 */
 	public $client;
 
+	public $data;
+	public $auth;
+
 	public function setUp()
 	{
 		parent::setUp();
 
-		$this->client = new \Asylum\Client('publickey', 'privatekey');
-		$data = $this->client->prepare("search", "GET", array(
-			'type' => "beer",
-			'q' => "Sam Adams"
-		));
+		// I <3 the brewery db api (not affiliated....)
+		$this->client = new \Asylum\Client("http://api.brewerydb.com/v2/", "publickey", "privatekey");
 
-		$this->server = new \Asylum\Server($data, 'privatekey');
+		// These next 2 lines would really come from the server of course...
+		$this->data = array('type' => "beer",'q' => "Sam Adams");
+		$this->auth = $this->client->prepare("search", "GET", $this->data)->get_authorization_header();
+
+		$this->server = new \Asylum\Server($this->data, $this->auth, 'privatekey');
 	}
 
 	public function testHasRequiredKeys()
 	{
-		$this->assertTrue($this->server->has_keys(array('key', 'timestamp', 'hash')));
+		// Make sure all of the keys are present
+		$keys = array('oauth_consumer_key', 'oauth_signature_method','oauth_timestamp',
+			'oauth_nonce', 'oauth_version', 'oauth_signature', 'type', 'q');
+
+		$this->assertTrue($this->server->has_keys($keys));
 	}
 
 	public function testMissingRequiredKeys()
@@ -42,41 +50,37 @@ class ServerTest extends PHPUnit_Framework_TestCase
 
 	public function testExpired()
 	{
-		$data = $this->client->prepare('search', 'GET', array());
-		$data['timestamp'] += 1000;
+		// Make the request only good for 1 second...
+		$server = new \Asylum\Server($this->data, $this->auth, 'privatekey', 1);
+		sleep(2);
 
-		$server = new \Asylum\Server($data, 'privatekey');
 		$this->assertFalse($server->is_active());
 	}
 
 	public function testValidRequest()
 	{
-		$this->assertTrue($this->server->is_valid('search', 'GET'));
+		$this->assertTrue($this->server->is_valid('http://api.brewerydb.com/v2/search', 'GET'));
 	}
 
 	public function testInvalidRequestOnDifferentURI()
 	{
-		$this->assertFalse($this->server->is_valid('beer', 'GET'));
+		$this->assertFalse($this->server->is_valid('http://api.brewerydb.com/v2/beer', 'GET'));
 	}
 
 	public function testInvalidRequestOnDifferentMethod()
 	{
-		$this->assertFalse($this->server->is_valid('search', 'PUT'));
+		$this->assertFalse($this->server->is_valid('http://api.brewerydb.com/v2/search', 'PUT'));
 	}
 
 	public function testInvalidRequestOnTamperedData()
 	{
-		$data = $this->client->prepare("search", "GET", array(
-			'type' => "beer",
-			'q' => "Sam Adams"
-		));
+		$data = $this->data;
 
 		// The data is tampered with
 		$data['q'] = "Bells";
 
-		$this->server = new \Asylum\Server($data, 'privatekey');
-
-		$this->assertFalse($this->server->is_valid('search', 'GET'));
+		$this->server = new \Asylum\Server($data, $this->auth, 'privatekey');
+		$this->assertFalse($this->server->is_valid('http://api.brewerydb.com/v2/search', 'GET'));
 	}
 
 }
